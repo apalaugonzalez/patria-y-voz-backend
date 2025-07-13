@@ -1,10 +1,21 @@
+// path: config/database.js
+
 module.exports = ({ env }) => ({
+  connection: {
+    client: 'postgres',
     connection: {
-        client: 'postgres',
-        connection: {
-            connectionString: env('DATABASE_URL')
-        },
-        debug: true,
-        pool: { min: 0, max: 7 },
-    }
+      host: env('DATABASE_HOST', '127.0.0.1'),
+      port: env.int('DATABASE_PORT', 5432),
+      database: env('DATABASE_NAME', 'strapi'),
+      user: env('DATABASE_USERNAME', 'strapi'),
+      password: env('DATABASE_PASSWORD', 'strapi'),
+      ssl: {
+        // This is the crucial part that fixes the ECONNREFUSED error for local development
+        rejectUnauthorized: false
+      },
+    },
+    // Your debug and pool settings
+    debug: true,
+    pool: { min: 0, max: 7 },
+  },
 });
