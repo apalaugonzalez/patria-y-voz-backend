@@ -1,6 +1,6 @@
 // path: ./config/middlewares.js
 
-module.exports = [
+module.exports = ({ env }) => ([
   'strapi::errors',
   {
     name: 'strapi::security',
@@ -14,27 +14,39 @@ module.exports = [
             'data:',
             'blob:',
             'market-assets.strapi.io',
-            // The S3-Compatible URL
-            'https://patria-y-voz.s3.us-east-005.backblazeb2.com',
-            // The Native Backblaze URL (the fix)
+            // The Native Backblaze URL
             'https://f005.backblazeb2.com',
+            // The S3-Compatible URL (The Final Fix)
+            'https://patria-y-voz.s3.us-east-005.backblazeb2.com',
           ],
           'media-src': [
             "'self'",
             'data:',
             'blob:',
             'market-assets.strapi.io',
-            // The S3-Compatible URL
-            'https://patria-y-voz.s3.us-east-005.backblazeb2.com',
-            // The Native Backblaze URL (the fix)
+            // The Native Backblaze URL
             'https://f005.backblazeb2.com',
+            // The S3-Compatible URL (The Final Fix)
+            'https://patria-y-voz.s3.us-east-005.backblazeb2.com',
           ],
           upgradeInsecureRequests: null,
         },
       },
     },
   },
-  'strapi::cors',
+  {
+    name: 'strapi::cors',
+    config: {
+      enabled: true,
+      headers: '*',
+      origin: [
+        'http://localhost:1337',
+        'http://localhost:3000',
+        'https://admin.patriayvoz.com',
+        'https://www.patriayvoz.com',
+      ],
+    },
+  },
   'strapi::poweredBy',
   'strapi::logger',
   'strapi::query',
@@ -42,4 +54,4 @@ module.exports = [
   'strapi::session',
   'strapi::favicon',
   'strapi::public',
-];
+]);
