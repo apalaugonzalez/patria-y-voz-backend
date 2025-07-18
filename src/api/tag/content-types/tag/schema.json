@@ -1,10 +1,10 @@
 {
   "kind": "collectionType",
-  "collectionName": "categories",
+  "collectionName": "tags",
   "info": {
-    "singularName": "category",
-    "pluralName": "categories",
-    "displayName": "Category",
+    "singularName": "tag",
+    "pluralName": "tags",
+    "displayName": "Tag",
     "description": ""
   },
   "options": {
@@ -31,33 +31,17 @@
       "targetField": "name",
       "required": true
     },
-    "description": {
-      "type": "string",
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      }
-    },
-    "color": {
-      "type": "string",
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      }
-    },
     "blog_posts": {
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::blog-post.blog-post",
-      "mappedBy": "categories"
+      "mappedBy": "tags"
     },
     "gallery_images": {
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::gallery-image.gallery-image",
-      "mappedBy": "categories"
+      "mappedBy": "tags"
     }
   }
 }

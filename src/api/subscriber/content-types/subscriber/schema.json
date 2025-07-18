@@ -1,0 +1,28 @@
+{
+  "kind": "collectionType",
+  "collectionName": "subscribers",
+  "info": {
+    "singularName": "subscriber",
+    "pluralName": "subscribers",
+    "displayName": "Subscriber",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "email": {
+      "type": "email",
+      "required": true,
+      "unique": true
+    },
+    "isConfirmed": {
+      "type": "boolean",
+      "default": false
+    },
+    "confirmationToken": {
+      "type": "string",
+      "private": true
+    }
+  }
+}

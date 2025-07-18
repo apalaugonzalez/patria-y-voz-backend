@@ -14,9 +14,7 @@ module.exports = ({ env }) => ([
             'data:',
             'blob:',
             'market-assets.strapi.io',
-            // The Native Backblaze URL
             'https://f005.backblazeb2.com',
-            // The S3-Compatible URL (The Final Fix)
             'https://patria-y-voz.s3.us-east-005.backblazeb2.com',
           ],
           'media-src': [
@@ -24,11 +22,11 @@ module.exports = ({ env }) => ([
             'data:',
             'blob:',
             'market-assets.strapi.io',
-            // The Native Backblaze URL
             'https://f005.backblazeb2.com',
-            // The S3-Compatible URL (The Final Fix)
             'https://patria-y-voz.s3.us-east-005.backblazeb2.com',
           ],
+          // THIS IS THE FIX: Add the 'frame-src' directive here
+          'frame-src': ["'self'", 'youtube.com', 'www.youtube.com', 'youtu.be'],
           upgradeInsecureRequests: null,
         },
       },
