@@ -1,42 +1,47 @@
-// src/api/comment/controllers/custom.js
 'use strict';
 
+/**
+ * custom controller
+ */
+
 module.exports = {
-  // Create comment
+  /**
+   * Creates a new comment or a reply to an existing comment.
+   * @param {object} ctx - The Koa context object.
+   */
   async createComment(ctx) {
     try {
-      const { name, email, content, postId } = ctx.request.body;
-      
+      // Destructure required and optional fields from the request body
+      const { name, email, content, postId, parentCommentId } = ctx.request.body;
+
+      // Basic validation to ensure required fields are present
       if (!name || !email || !content || !postId) {
-        return ctx.badRequest('Missing required fields');
+        return ctx.badRequest('Missing required fields (name, email, content, postId).');
       }
 
-      // Create comment
-      const result = await strapi.entityService.create('api::comment.comment', {
-        data: {
-          name,
-          email,
-          content,
-          moderationStatus: 'approved',
-          upvotes: 0,
-          isReply: false,
-          locale: 'en',
-        },
-      });
+      // Prepare the data object for creating the comment
+      const data = {
+        name,
+        email,
+        content,
+        blog_post: postId, // Link the comment to the blog post
+        moderationStatus: 'approved',
+        upvotes: 0,
+        downvotes: 0, // Initialize downvotes
+        locale: 'en', // Assuming 'en' as default locale
+        isReply: !!parentCommentId, // isReply is true if parentCommentId exists
+      };
 
-      console.log('Created comment:', result);
-
-      // Manually create the junction table entry
-      try {
-        await strapi.db.connection.raw(`
-          INSERT INTO comments_blog_post_lnk (comment_id, blog_post_id, comment_ord)
-          VALUES (?, ?, 0)
-        `, [result.id, parseInt(postId)]);
-        console.log('Created junction table entry');
-      } catch (junctionError) {
-        console.error('Error creating junction table entry:', junctionError);
+      // If it's a reply, add the parent comment relationship
+      if (parentCommentId) {
+        data.parent_comment = parentCommentId;
       }
 
+      // Use the entityService to create the comment.
+      // This automatically handles the relation to the blog_post.
+      const result = await strapi.entityService.create('api::comment.comment', { data });
+
+      // Return a sanitized version of the created comment
       return {
         id: result.id,
         name: result.name,
@@ -44,6 +49,8 @@ module.exports = {
         createdAt: result.createdAt,
         moderationStatus: result.moderationStatus,
         upvotes: result.upvotes,
+        downvotes: result.downvotes,
+        isReply: result.isReply,
       };
     } catch (err) {
       strapi.log.error('Error in createComment controller:', err);
@@ -51,39 +58,50 @@ module.exports = {
     }
   },
 
-  // Get comments by blog post ID
+  /**
+   * Gets all approved, top-level comments for a specific blog post,
+   * populating their nested replies.
+   * @param {object} ctx - The Koa context object.
+   */
   async getCommentsByPost(ctx) {
     try {
       const { postId } = ctx.params;
-      
+
       if (!postId) {
-        return ctx.badRequest('Post ID is required');
+        return ctx.badRequest('Post ID is required.');
       }
 
-      console.log('Fetching comments for postId:', postId);
+      // Fetch only top-level comments (where isReply is false) and populate their replies.
+      const comments = await strapi.entityService.findMany('api::comment.comment', {
+        filters: {
+          blog_post: postId,
+          moderationStatus: 'approved',
+          isReply: false, // IMPORTANT: Fetch only parent comments
+        },
+        sort: { upvotes: 'desc', createdAt: 'desc' }, // Sort by upvotes, then creation date
+        populate: {
+          replies: { // Populate the 'replies' relation for each top-level comment
+            sort: { createdAt: 'asc' }, // Sort replies chronologically
+            populate: {
+                // You could nest another level of replies here if needed
+                // e.g., replies: { populate: ... }
+            }
+          }
+        },
+        limit: 50 // Adjust limit as needed
+      });
 
-      // Use direct SQL query to get comments via junction table
-      const comments = await strapi.db.connection.raw(`
-        SELECT c.* 
-        FROM comments c
-        JOIN comments_blog_post_lnk j ON c.id = j.comment_id
-        WHERE j.blog_post_id = ? AND c.moderation_status = 'approved'
-        ORDER BY c.upvotes DESC, c.created_at DESC
-        LIMIT 25
-      `, [parseInt(postId)]);
-
-      // Format depends on database type (PostgreSQL uses rows)
-      const formattedComments = comments.rows || comments[0];
-      console.log(`Found ${formattedComments ? formattedComments.length : 0} comments for post ${postId}`);
-
-      return { data: formattedComments || [] };
+      return { data: comments };
     } catch (error) {
       strapi.log.error('Error in getCommentsByPost controller:', error);
       return ctx.internalServerError('An error occurred while fetching comments.');
     }
   },
 
-  // Upvote method
+  /**
+   * Increments the upvote count for a specific comment.
+   * @param {object} ctx - The Koa context object.
+   */
   async upvote(ctx) {
     try {
       const { id } = ctx.params;
@@ -91,6 +109,10 @@ module.exports = {
         return ctx.badRequest('Comment ID is required.');
       }
 
+      // Atomically increment the upvotes field.
+      // Using `findOne` and then `update` is fine, but for high-traffic sites,
+      // a raw query might be better to prevent race conditions.
+      // For most use cases, this is perfectly acceptable.
       const comment = await strapi.entityService.findOne('api::comment.comment', id);
 
       if (!comment) {
@@ -107,6 +129,36 @@ module.exports = {
     } catch (err) {
       strapi.log.error('Error in upvote controller:', err);
       return ctx.internalServerError('An error occurred while upvoting.');
+    }
+  },
+
+  /**
+   * Increments the downvote count for a specific comment.
+   * @param {object} ctx - The Koa context object.
+   */
+  async downvote(ctx) {
+    try {
+      const { id } = ctx.params;
+      if (!id) {
+        return ctx.badRequest('Comment ID is required.');
+      }
+
+      const comment = await strapi.entityService.findOne('api::comment.comment', id);
+
+      if (!comment) {
+        return ctx.notFound('Comment not found.');
+      }
+
+      const updatedComment = await strapi.entityService.update('api::comment.comment', id, {
+        data: {
+          downvotes: (comment.downvotes || 0) + 1,
+        },
+      });
+
+      return { downvotes: updatedComment.downvotes };
+    } catch (err) {
+      strapi.log.error('Error in downvote controller:', err);
+      return ctx.internalServerError('An error occurred while downvoting.');
     }
   },
 };

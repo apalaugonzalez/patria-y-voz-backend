@@ -52,6 +52,22 @@
       "relation": "manyToOne",
       "target": "api::blog-post.blog-post",
       "inversedBy": "comments"
+    },
+    "downvotes": {
+      "type": "integer",
+      "default": 0
+    },
+    "parent_comment": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::comment.comment",
+      "inversedBy": "replies"
+    },
+    "replies": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::comment.comment",
+      "mappedBy": "parent_comment"
     }
   }
 }
